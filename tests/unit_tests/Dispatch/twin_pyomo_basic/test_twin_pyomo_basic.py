@@ -8,9 +8,11 @@ of different configurations for the rolling window optimization.
 import platform
 
 import numpy as np
+import pandas as pd
 
 import pyomo.environ as pyo
 from pyomo.opt import SolverStatus, TerminationCondition
+
 
 if platform.system() == 'Windows':
   SOLVER = 'glpk'
@@ -201,6 +203,40 @@ def print_solution(m):
         )
   print('*'*80)
 
+def output_solution(m):
+  """
+    Writes post-solve model setup to two CSVs
+    @ In, m, pyo.ConcreteModel, model containing problem
+    @ Out, None
+  """
+  # Objective value output
+  with open('objective_value_soln.csv', 'w', newline='') as obj_val_csv:
+    obj_val_dict = {"objective value": [m.OBJ()]}
+    obj_val_df = pd.DataFrame(obj_val_dict)
+    obj_val_df.to_csv(obj_val_csv, index=False)
+
+  # Dispatch variable ouput
+  with open('dispatch_variables_soln.csv', 'w', newline='') as dispatch_csv:
+    dispatch_dict = {'time': [], 
+                     'steam source': [], 
+                     'steam storage': [], 
+                     'elec gen (s)': [], 
+                     'elec gen (e)': [], 
+                     'elec sink': []
+                     }
+    
+    for t in m.T:
+      dispatch_dict['time'].append(f'{m.Times[t]:1.2e}')
+      dispatch_dict['steam source'].append(f'{m.steam_source_production[0, t].value: 1.3e}')
+      dispatch_dict['steam storage'].append(f'{m.steam_storage_production[0, t].value: 1.3e}')
+      dispatch_dict['elec gen (s)'].append(f'{m.elec_generator_production[0, t].value: 1.3e}')
+      dispatch_dict['elec gen (e)'].append(f'{m.elec_generator_production[1, t].value: 1.3e}')
+      dispatch_dict['elec sink'].append(f'{m.elec_sink_production[0, t].value: 1.3e}')
+
+    dispatch_df = pd.DataFrame(dispatch_dict)
+    dispatch_df.to_csv(dispatch_csv, index=False)
+      
+
 #######
 #
 # Solver.
@@ -216,9 +252,10 @@ def solve_model(m):
 
 if __name__ == '__main__':
   m = make_concrete_model()
-  print_setup(m)
+  # print_setup(m)
   s = solve_model(m)
-  print_solution(m)
+  # print_solution(m)
+  output_solution(m)
 
 # solution using setup:
 #   time = np.linspace(0, 10, 11)
