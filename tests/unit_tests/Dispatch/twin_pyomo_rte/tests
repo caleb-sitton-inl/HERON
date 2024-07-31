@@ -1,0 +1,14 @@
+[Tests]
+  [./TwinPyomoRTE]
+    type = RavenPython
+    input = 'test_twin_pyomo_rte.py'
+    [./csv_obj_val]
+      type = OrderedCSV
+      output = overall_values_soln.csv
+    [../]
+    [./csv_dispatch]
+      type = OrderedCSV
+      output = dispatch_variables_soln.csv
+    [../]
+  [../]
+[]

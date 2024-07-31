@@ -8,6 +8,7 @@ of different configurations for the rolling window optimization.
 import platform
 
 import numpy as np
+import pandas as pd
 
 import pyomo.environ as pyo
 from pyomo.opt import SolverStatus, TerminationCondition
@@ -235,6 +236,45 @@ def print_solution(m):
         )
   print('*'*80)
 
+def output_solution(m):
+  """
+    Writes post-solve model setup to two CSVs
+    @ In, m, pyo.ConcreteModel, model containing problem
+    @ Out, None
+  """
+  # Overall values output
+  with open('overall_values_soln.csv', 'w', newline='') as overall_vals_csv:
+    overall_vals_dict = {'objective value': [m.OBJ()], 'storage initial': [storage_initial], 'dt': [dt]}
+    overall_vals_df = pd.DataFrame(overall_vals_dict)
+    overall_vals_df.to_csv(overall_vals_csv, index=False)
+
+  # Dispatch variable ouput
+  with open('dispatch_variables_soln.csv', 'w', newline='') as dispatch_csv:
+    dispatch_dict = {'time': [],
+                     'steam src': [],
+                     'storage (c)': [],
+                     'storage (d)': [],
+                     'storage (l)': [],
+                     'elec gen (s)': [],
+                     'elec gen (e)': [],
+                     'elec sink': [],
+                     'bigM': []
+                     }
+    
+    for t in m.T:
+      dispatch_dict['time'].append(f'{m.Times[t]:1.2e}')
+      dispatch_dict['steam src'].append(f'{m.steam_source_production[0, t].value: 1.3e}')
+      dispatch_dict['storage (c)'].append(f'{m.steam_storage_charge[0, t].value: 1.3e}')
+      dispatch_dict['storage (d)'].append(f'{m.steam_storage_discharge[0, t].value: 1.3e}')
+      dispatch_dict['storage (l)'].append(f'{m.steam_storage_level[0, t].value: 1.3e}')
+      dispatch_dict['elec gen (s)'].append(f'{m.elec_generator_production[0, t].value: 1.3e}')
+      dispatch_dict['elec gen (e)'].append(f'{m.elec_generator_production[1, t].value: 1.3e}')
+      dispatch_dict['elec sink'].append(f'{m.elec_sink_production[0, t].value: 1.3e}')
+      dispatch_dict['bigM'].append(f'{m.steam_oneway_bigM[t].value}')
+
+    dispatch_df = pd.DataFrame(dispatch_dict)
+    dispatch_df.to_csv(dispatch_csv, index=False)
+
 #######
 #
 # Solver.
@@ -250,36 +290,7 @@ def solve_model(m):
 
 if __name__ == '__main__':
   m = make_concrete_model()
-  print_setup(m)
+  # print_setup(m)
   s = solve_model(m)
-  print_solution(m)
-
-# solution using setup:
-#   time = np.linspace(0, 10, 11)
-#   storage_initial = 50 # kg of steam
-#   storage_limit = 400 # kg of steam
-#   steam_produced = 100 # kg/h of steam
-#   gen_consume_limit = 110 # consumes at most 110 kg/h steam
-#   sink_limit = 10000 # kWh/h = kW of electricity
-#   1 steam = 2 * electricity
-#   cost for generator = 10 * kg/h steam consumed
-#   profit = 100 * electricity consumed at sink, t < 5,
-#              1 * electricity consumed at sink, t >= 5,
-#
-# should look like:
-# ********************************************************************************
-# solution:
-#   objective value: 20100.0
-# time | steam source | steam storage | elec gen (s, e) | elec sink
-# 0.00e+00 |  1.000e+02 |  4.000e+01 | (-1.100e+02,  5.500e+01) | -5.500e+01
-# 1.00e+00 |  1.000e+02 |  3.000e+01 | (-1.100e+02,  5.500e+01) | -5.500e+01
-# 2.00e+00 |  1.000e+02 |  2.000e+01 | (-1.100e+02,  5.500e+01) | -5.500e+01
-# 3.00e+00 |  1.000e+02 |  1.000e+01 | (-1.100e+02,  5.500e+01) | -5.500e+01
-# 4.00e+00 |  1.000e+02 |  0.000e+00 | (-1.100e+02,  5.500e+01) | -5.500e+01
-# 5.00e+00 |  1.000e+02 |  0.000e+00 | (-1.000e+02,  5.000e+01) | -5.000e+01
-# 6.00e+00 |  1.000e+02 |  0.000e+00 | (-1.000e+02,  5.000e+01) | -5.000e+01
-# 7.00e+00 |  1.000e+02 |  1.000e+02 | ( 0.000e+00,  0.000e+00) |  0.000e+00
-# 8.00e+00 |  1.000e+02 |  2.000e+02 | ( 0.000e+00,  0.000e+00) |  0.000e+00
-# 9.00e+00 |  1.000e+02 |  3.000e+02 | ( 0.000e+00,  0.000e+00) |  0.000e+00
-# 1.00e+01 |  1.000e+02 |  4.000e+02 | ( 0.000e+00,  0.000e+00) |  0.000e+00
-# ********************************************************************************
+  output_solution(m)
+  # print_solution(m)
