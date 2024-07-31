@@ -9,6 +9,7 @@ import platform # only for choosing solver based on HERON installation
 
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
 import pyomo.environ as pyo
 
@@ -331,6 +332,38 @@ def print_solution(m):
         )
   print('*'*80)
 
+def output_solution(m):
+  """
+    Writes post-solve model setup to two CSVs
+    @ In, m, pyo.ConcreteModel, model containing problem
+    @ Out, None
+  """
+  # Objective value output
+  with open('objective_value_soln.csv', 'w', newline='') as obj_val_csv:
+    obj_val_dict = {'objective value': [m.OBJ()]}
+    obj_val_df = pd.DataFrame(obj_val_dict)
+    obj_val_df.to_csv(obj_val_csv, index=False)
+
+  # Dispatch variable ouput
+  with open('dispatch_variables_soln.csv', 'w', newline='') as dispatch_csv:
+    dispatch_dict = {'time': [],
+                     'price': [], 
+                     'steam src': [],  
+                     'elec gen (s)': [], 
+                     'elec gen (e)': [], 
+                     'elec sink': []
+                     }
+    
+    for t in m.T:
+      dispatch_dict['time'].append(f'{m.Times[t]:1.2e}')
+      dispatch_dict['price'].append(f'{elec_price[t]: 3.3f}')
+      dispatch_dict['steam src'].append(f'{m.NPP_production[0, t].value: 1.3e}')
+      dispatch_dict['elec gen (s)'].append(f'{m.BOP_production[0, t].value: 1.3e}')
+      dispatch_dict['elec gen (e)'].append(f'{m.BOP_production[1, t].value: 1.3e}')
+      dispatch_dict['elec sink'].append(f'{m.Grid_production[0, t].value: 1.3e}')
+
+    dispatch_df = pd.DataFrame(dispatch_dict)
+    dispatch_df.to_csv(dispatch_csv, index=False)
 
 #######
 #
@@ -347,8 +380,9 @@ def solve_model(m):
 
 if __name__ == '__main__':
   m = make_concrete_model()
-  print_setup(m)
+  # print_setup(m)
   s = solve_model(m)
-  print_solution(m)
-  plot_solution(m)
-  plt.show()
+  output_solution(m)
+  # print_solution(m)
+  # plot_solution(m)
+  # plt.show()

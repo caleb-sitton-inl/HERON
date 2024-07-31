@@ -1,0 +1,14 @@
+[Tests]
+  [./TwinPyomoLimitedRamp]
+    type = RavenPython
+    input = 'test_twin_pyomo_limited_ramp.py'
+    [./csv_obj_val]
+      type = OrderedCSV
+      output = objective_value_soln.csv
+    [../]
+    [./csv_dispatch]
+      type = OrderedCSV
+      output = dispatch_variables_soln.csv
+    [../]
+  [../]
+[]
