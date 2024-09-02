@@ -8,6 +8,7 @@ of different configurations for the rolling window optimization.
 import platform
 
 import numpy as np
+import matplotlib.pyplot as plt
 import pandas as pd
 
 import pyomo.environ as pyo
@@ -183,6 +184,48 @@ def print_setup(m):
   print('\\' + '='*80)
   print('')
 
+def extract_soln(m):
+  """
+    Extracts final solution from model evaluation
+    @ In, m, pyo.ConcreteModel, model
+    @ Out, res, dict, results dictionary for dispatch
+  """
+  res = {}
+  T = len(m.T)
+  res['steam_src'] = np.zeros(T)
+  res['steam_storage'] = np.zeros(T)
+  res['elec_gen_s'] = np.zeros(T)
+  res['elec_gen_e'] = np.zeros(T)
+  res['elec_sink'] = np.zeros(T)
+  for t in m.T:
+    res['steam_src'][t] = m.steam_source_production[0, t].value
+    res['steam_storage'][t] = m.steam_storage_production[0, t].value
+    res['elec_gen_s'][t] = m.elec_generator_production[0, t].value
+    res['elec_gen_e'][t] = m.elec_generator_production[1, t].value
+    res['elec_sink'][t] = m.elec_sink_production[0, t].value
+  return res
+
+def plot_solution(m):
+  """
+    Plots solution from optimized model
+    @ In, m, pyo.ConcreteModel, model
+    @ Out, None
+  """
+  res = extract_soln(m)
+  fig, axs = plt.subplots(2, 1, sharex=True)
+  axs[0].set_ylabel(r'Steam')
+  axs[1].set_ylabel(r'Elec')
+  axs[1].set_xlabel('Time (h)')
+  axs[0].plot(time, res['steam_src'], 'o-', label='Steam source (kg/h)')
+  axs[0].plot(time, res['steam_storage'], 'o-', label='Steam storage (kg)')
+  axs[0].plot(time, res['elec_gen_s'], 'o-', label='Elec generator steam production (kg/h)')
+  axs[0].legend()
+  axs[1].plot(time, res['elec_gen_e'], 'o-', label='Elec generator elec production (kW)')
+  axs[1].plot(time, res['elec_sink'], 'o-', label='Elec sink (grid) (kW)')
+  axs[1].legend()
+  plt.suptitle(f'Basic Optimization Results')
+  plt.savefig(f'dispatch_basic.png')
+
 def print_solution(m):
   """
     Debug printing for post-solve model setup
@@ -252,10 +295,12 @@ def solve_model(m):
 
 if __name__ == '__main__':
   m = make_concrete_model()
-  # print_setup(m)
+  print_setup(m)
   s = solve_model(m)
-  # print_solution(m)
+  print_solution(m)
   output_solution(m)
+  plot_solution(m)
+  plt.show()
 
 # solution using setup:
 #   time = np.linspace(0, 10, 11)

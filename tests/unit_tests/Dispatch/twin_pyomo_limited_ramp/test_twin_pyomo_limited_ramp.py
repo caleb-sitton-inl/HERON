@@ -24,7 +24,7 @@ else:
 #
 components = ['NPP', 'BOP', 'Grid']
 resources = ['steam', 'electricity']
-time = np.linspace(0, 24, 24) # from @1 to @2 in @3 steps
+time = np.linspace(0, 23, 24) # from @1 to @2 in @3 steps
 dt = time[1] - time[0]
 resource_map = {'NPP': {'steam': 0},
                 'BOP': {'steam': 0, 'electricity': 1},
