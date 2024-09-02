@@ -38,7 +38,7 @@ sink_limit = 1000 # MWh = MW of electricity at Grid
 
 ramp_up_limit = 100 # MWt/h steam NPP ramp up limit
 ramp_down_limit = 100 # MWt/h steam NPP ramp down limit
-delta = 1 # aux var TODO good value?
+delta = 1e-6 # aux var
 time_between_ramp_up = 10 # hours before unit can ramp up again
 
 # --------------------------------------------------------------------------------
@@ -281,12 +281,23 @@ def extract_soln(m):
   res['BOP_steam'] = np.zeros(T)
   res['BOP_elec'] = np.zeros(T)
   res['Grid_elec'] = np.zeros(T)
+
+  res['opex'] = np.zeros(T)
+  res['sales'] = np.zeros(T)
+  res['objective'] = np.zeros(T)
+
   for t in m.T:
     res['prices'][t] = elec_price[t]
     res['NPP_steam'][t] = m.NPP_production[0, t].value
     res['BOP_steam'][t] = m.BOP_production[0, t].value
     res['BOP_elec'][t] = m.BOP_production[1, t].value
     res['Grid_elec'][t] = m.Grid_production[0, t].value
+
+    # Calculations copied from _economics function
+    res['opex'][t] = m.BOP_production[0, t].value * margin_NPP
+    res['sales'][t] = -1 * m.Grid_production[0, t].value * elec_price[t]
+    res['objective'][t] = res['opex'][t] + res['sales'][t]
+
   return res
 
 def plot_solution(m):
@@ -296,11 +307,12 @@ def plot_solution(m):
     @ Out, None
   """
   res = extract_soln(m)
-  fig, axs = plt.subplots(3, 1, sharex=True)
-  axs[0].set_ylabel(r'Steam MW$_t$')
-  axs[1].set_ylabel(r'Elec MW$_e$')
-  axs[2].set_ylabel(r'Prices \$/MW$_e$')
-  axs[2].set_xlabel('Time (h)')
+  fig, axs = plt.subplots(4, 1, sharex=True)
+  axs[0].set_ylabel(r'Steam (MW$_t$)')
+  axs[1].set_ylabel(r'Elec (MW$_e$)')
+  axs[2].set_ylabel(r'Prices (\$/MW$_e$)')
+  axs[3].set_ylabel(r'Cashflow (\$/h)')
+  axs[3].set_xlabel('Time (h)')
   axs[0].plot(time, res['NPP_steam'], 'o-', label='NPP_steam')
   axs[0].plot(time, res['BOP_steam'], 'o-', label='BOP_steam')
   axs[0].legend()
@@ -309,6 +321,10 @@ def plot_solution(m):
   axs[1].legend()
   axs[2].plot(time, res['prices'], 'o-', label='Prices')
   axs[2].legend()
+  axs[3].plot(time, res['opex'], 'o-', label='Expenditures')
+  axs[3].plot(time, res['sales'], 'o-', label='Sales')
+  axs[3].plot(time, res['objective'], 'o-', label='Profit')
+  axs[3].legend()
   plt.suptitle(f'Ramp up limit: {time_between_ramp_up} h')
   plt.savefig(f'dispatch_limit_{time_between_ramp_up}.png')
 

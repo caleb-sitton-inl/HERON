@@ -223,16 +223,31 @@ def extract_soln(m):
   res = {}
   T = len(m.T)
   res['steam_src'] = np.zeros(T)
-  res['steam_storage'] = np.zeros(T)
   res['elec_gen_s'] = np.zeros(T)
+  res['steam_storage_c'] = np.zeros(T)
+  res['steam_storage_d'] = np.zeros(T)
+  res['steam_storage_l'] = np.zeros(T)
   res['elec_gen_e'] = np.zeros(T)
   res['elec_sink'] = np.zeros(T)
+
+  res['opex'] = np.zeros(T)
+  res['sales'] = np.zeros(T)
+  res['objective'] = np.zeros(T)
+
   for t in m.T:
     res['steam_src'][t] = m.steam_source_production[0, t].value
-    res['steam_storage'][t] = m.steam_storage_level[0, t].value
     res['elec_gen_s'][t] = m.elec_generator_production[0, t].value
+    res['steam_storage_c'][t] = m.steam_storage_charge[0, t].value
+    res['steam_storage_d'][t] = m.steam_storage_discharge[0, t].value
+    res['steam_storage_l'][t] = m.steam_storage_level[0, t].value
     res['elec_gen_e'][t] = m.elec_generator_production[1, t].value
     res['elec_sink'][t] = m.elec_sink_production[0, t].value
+
+    # Calculations copied from _economics function
+    res['opex'][t] = m.elec_generator_production[0, t].value * 10
+    res['sales'][t] = m.elec_sink_production[0, t].value * -1 * (100 if t < 5 else 1)
+    res['objective'][t] = res['opex'][t] + res['sales'][t]
+
   return res
 
 def plot_solution(m):
@@ -242,18 +257,30 @@ def plot_solution(m):
     @ Out, None
   """
   res = extract_soln(m)
-  fig, axs = plt.subplots(2, 1, sharex=True)
-  axs[0].set_ylabel(r'Steam')
-  axs[1].set_ylabel(r'Elec')
-  axs[1].set_xlabel('Time (h)')
-  axs[0].plot(time, res['steam_src'], 'o-', label='Steam source (kg/h)')
-  axs[0].plot(time, res['steam_storage'], 'o-', label='Steam storage (kg)')
-  axs[0].plot(time, res['elec_gen_s'], 'o-', label='Elec generator steam production (kg/h)')
+  fig, axs = plt.subplots(4, 1, sharex=True)
+  axs[0].set_ylabel(f'Steam rate (kg/h)')
+  axs[1].set_ylabel(f'Steam storage\nrate (kg/h)')
+  ax_1_rh = axs[1].twinx()
+  ax_1_rh.set_ylabel(f'Steam storage\nlevel (kg)')
+  axs[2].set_ylabel(f'Electricity (kW)')
+  axs[3].set_ylabel(f'Cashflow ($/h)')
+  axs[3].set_xlabel('Time (h)')
+  axs[0].plot(time, res['steam_src'], 'o-', label='Steam source')
+  axs[0].plot(time, res['elec_gen_s'], 'o-', label='Elec generator steam production')
   axs[0].legend()
-  axs[1].plot(time, res['elec_gen_e'], 'o-', label='Elec generator elec production (kW)')
-  axs[1].plot(time, res['elec_sink'], 'o-', label='Elec sink (grid) (kW)')
-  axs[1].legend()
-  plt.suptitle(f'Basic Optimization Results')
+  axs[1].plot(time, res['steam_storage_c'], 'o-', label='Steam storage charge')
+  axs[1].plot(time, res['steam_storage_d'], 'o-', label='Steam storage discharge')
+  ax_1_rh.plot(time, res['steam_storage_l'], 'o-', label='Steam storage level', color='m')
+  axs[1].legend(loc="upper left")
+  ax_1_rh.legend(loc="lower right")
+  axs[2].plot(time, res['elec_gen_e'], 'o-', label='Elec generator elec production')
+  axs[2].plot(time, res['elec_sink'], 'o-', label='Elec sink')
+  axs[2].legend()
+  axs[3].plot(time, res['opex'], 'o-', label='Expenditures')
+  axs[3].plot(time, res['sales'], 'o-', label='Sales')
+  axs[3].plot(time, res['objective'], 'o-', label='Profit')
+  axs[3].legend()
+  plt.suptitle(f'RTE Optimization Results')
   plt.savefig(f'dispatch_rte.png')
 
 def print_solution(m):
@@ -287,7 +314,7 @@ def output_solution(m):
   """
   # Overall values output
   with open('overall_values_soln.csv', 'w', newline='') as overall_vals_csv:
-    overall_vals_dict = {'objective value': [m.OBJ()], 'storage initial': [storage_initial], 'dt': [dt]}
+    overall_vals_dict = {'objective value': [m.OBJ()], 'storage initial': [storage_initial.value], 'dt': [dt]}
     overall_vals_df = pd.DataFrame(overall_vals_dict)
     overall_vals_df.to_csv(overall_vals_csv, index=False)
 
@@ -333,10 +360,9 @@ def solve_model(m):
 
 if __name__ == '__main__':
   m = make_concrete_model()
-  print_setup(m)
+  # print_setup(m)
   s = solve_model(m)
   output_solution(m)
-  print_solution(m)
-  plot_solution(m)
-  plt.show()
-
+  # print_solution(m)
+  # plot_solution(m)
+  # plt.show()

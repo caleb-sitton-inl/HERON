@@ -197,12 +197,23 @@ def extract_soln(m):
   res['elec_gen_s'] = np.zeros(T)
   res['elec_gen_e'] = np.zeros(T)
   res['elec_sink'] = np.zeros(T)
+
+  res['opex'] = np.zeros(T)
+  res['sales'] = np.zeros(T)
+  res['objective'] = np.zeros(T)
+
   for t in m.T:
     res['steam_src'][t] = m.steam_source_production[0, t].value
     res['steam_storage'][t] = m.steam_storage_production[0, t].value
     res['elec_gen_s'][t] = m.elec_generator_production[0, t].value
     res['elec_gen_e'][t] = m.elec_generator_production[1, t].value
     res['elec_sink'][t] = m.elec_sink_production[0, t].value
+
+    # Calculations copied from _economics function
+    res['opex'][t] = m.elec_generator_production[0, t].value * 10
+    res['sales'][t] = m.elec_sink_production[0, t].value * -1 * (100 if t < 5 else 1)
+    res['objective'][t] = res['opex'][t] + res['sales'][t]
+
   return res
 
 def plot_solution(m):
@@ -212,17 +223,25 @@ def plot_solution(m):
     @ Out, None
   """
   res = extract_soln(m)
-  fig, axs = plt.subplots(2, 1, sharex=True)
-  axs[0].set_ylabel(r'Steam')
-  axs[1].set_ylabel(r'Elec')
-  axs[1].set_xlabel('Time (h)')
-  axs[0].plot(time, res['steam_src'], 'o-', label='Steam source (kg/h)')
-  axs[0].plot(time, res['steam_storage'], 'o-', label='Steam storage (kg)')
-  axs[0].plot(time, res['elec_gen_s'], 'o-', label='Elec generator steam production (kg/h)')
-  axs[0].legend()
-  axs[1].plot(time, res['elec_gen_e'], 'o-', label='Elec generator elec production (kW)')
-  axs[1].plot(time, res['elec_sink'], 'o-', label='Elec sink (grid) (kW)')
+  fig, axs = plt.subplots(3, 1, sharex=True)
+  axs[0].set_ylabel(r'Steam rate (kg/h)')
+  ax_0_rh = axs[0].twinx()
+  ax_0_rh.set_ylabel(r'Steam quantity (kg)')
+  axs[1].set_ylabel(r'Elec (kW)')
+  axs[2].set_ylabel(r'Cashflow ($/h)')
+  axs[2].set_xlabel('Time (h)')
+  axs[0].plot(time, res['steam_src'], 'o-', label='Steam source')
+  axs[0].plot(time, res['elec_gen_s'], 'o-', label='Elec generator steam production')
+  ax_0_rh.plot(time, res['steam_storage'], 'o-', label='Steam storage', color='m')
+  axs[0].legend(loc='upper left')
+  ax_0_rh.legend(loc='lower right')
+  axs[1].plot(time, res['elec_gen_e'], 'o-', label='Elec generator elec production')
+  axs[1].plot(time, res['elec_sink'], 'o-', label='Elec sink')
   axs[1].legend()
+  axs[2].plot(time, res['opex'], 'o-', label='Expenditures')
+  axs[2].plot(time, res['sales'], 'o-', label='Sales')
+  axs[2].plot(time, res['objective'], 'o-', label='Profit')
+  axs[2].legend()
   plt.suptitle(f'Basic Optimization Results')
   plt.savefig(f'dispatch_basic.png')
 
@@ -295,39 +314,9 @@ def solve_model(m):
 
 if __name__ == '__main__':
   m = make_concrete_model()
-  print_setup(m)
+  # print_setup(m)
   s = solve_model(m)
-  print_solution(m)
+  # print_solution(m)
   output_solution(m)
-  plot_solution(m)
-  plt.show()
-
-# solution using setup:
-#   time = np.linspace(0, 10, 11)
-#   storage_initial = 50 # kg of steam
-#   storage_limit = 400 # kg of steam
-#   steam_produced = 100 # kg/h of steam
-#   gen_consume_limit = 110 # consumes at most 110 kg/h steam
-#   sink_limit = 10000 # kWh/h = kW of electricity
-#   1 steam = 2 * electricity
-#   cost for generator = 10 * kg/h steam consumed
-#   profit = 100 * electricity consumed at sink, t < 5,
-#              1 * electricity consumed at sink, t >= 5,
-#
-# should look like:
-# ********************************************************************************
-# solution:
-#   objective value: 20100.0
-# time | steam source | steam storage | elec gen (s, e) | elec sink
-# 0.00e+00 |  1.000e+02 |  4.000e+01 | (-1.100e+02,  5.500e+01) | -5.500e+01
-# 1.00e+00 |  1.000e+02 |  3.000e+01 | (-1.100e+02,  5.500e+01) | -5.500e+01
-# 2.00e+00 |  1.000e+02 |  2.000e+01 | (-1.100e+02,  5.500e+01) | -5.500e+01
-# 3.00e+00 |  1.000e+02 |  1.000e+01 | (-1.100e+02,  5.500e+01) | -5.500e+01
-# 4.00e+00 |  1.000e+02 |  0.000e+00 | (-1.100e+02,  5.500e+01) | -5.500e+01
-# 5.00e+00 |  1.000e+02 |  0.000e+00 | (-1.000e+02,  5.000e+01) | -5.000e+01
-# 6.00e+00 |  1.000e+02 |  0.000e+00 | (-1.000e+02,  5.000e+01) | -5.000e+01
-# 7.00e+00 |  1.000e+02 |  1.000e+02 | ( 0.000e+00,  0.000e+00) |  0.000e+00
-# 8.00e+00 |  1.000e+02 |  2.000e+02 | ( 0.000e+00,  0.000e+00) |  0.000e+00
-# 9.00e+00 |  1.000e+02 |  3.000e+02 | ( 0.000e+00,  0.000e+00) |  0.000e+00
-# 1.00e+01 |  1.000e+02 |  4.000e+02 | ( 0.000e+00,  0.000e+00) |  0.000e+00
-# ********************************************************************************
+  # plot_solution(m)
+  # plt.show()
