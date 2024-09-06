@@ -224,9 +224,9 @@ def plot_solution(m):
   """
   res = extract_soln(m)
   fig, axs = plt.subplots(3, 1, sharex=True)
-  axs[0].set_ylabel(r'Steam rate (kg/h)')
+  axs[0].set_ylabel(f'Steam rate\n(kg/h)')
   ax_0_rh = axs[0].twinx()
-  ax_0_rh.set_ylabel(r'Steam quantity (kg)')
+  ax_0_rh.set_ylabel(f'Steam quantity\n(kg)')
   axs[1].set_ylabel(r'Elec (kW)')
   axs[2].set_ylabel(r'Cashflow ($/h)')
   axs[2].set_xlabel('Time (h)')
@@ -243,6 +243,7 @@ def plot_solution(m):
   axs[2].plot(time, res['objective'], 'o-', label='Profit')
   axs[2].legend()
   plt.suptitle(f'Basic Optimization Results')
+  plt.tight_layout()
   plt.savefig(f'dispatch_basic.png')
 
 def print_solution(m):
