@@ -5,10 +5,14 @@
     [./csv_obj_val]
       type = OrderedCSV
       output = objective_value_soln.csv
+      zero_threshold = 1e-6
+      rel_err = 1e-6
     [../]
     [./csv_obj_val]
       type = OrderedCSV
       output = dispatch_variables_soln.csv
+      zero_threshold = 1e-6
+      rel_err = 1e-6
     [../]
   [../]
 []
