@@ -12,7 +12,7 @@ jobs:
         uses: actions/checkout@v3
       - run: pwd
       - run: cd .. && rm -Rf raven && git clone https://github.com/idaholab/raven.git
-      - run: python3 ../raven/scripts/install_plugins.py -s TEAL
+      - run: python3 ../raven/scripts/install_plugins.py -s TEAL DOVE
       - run: python3 ../raven/scripts/install_plugins.py -s ${{ github.workspace }}
       - run: WD=`(cd ../../.. && pwd)` && export RAVEN_LIBS_NAME="raven_libs_"`basename $WD` && ../raven/scripts/establish_conda_env.sh --install
       - run: cd ../raven && ./build_raven
@@ -41,7 +41,7 @@ jobs:
         uses: actions/checkout@v3
       - run: pwd
       - run: cd ..; if (Test-Path raven) {Remove-Item -Recurse -Force raven}; git clone https://github.com/idaholab/raven.git
-      - run: python ../raven/scripts/install_plugins.py -s TEAL
+      - run: python ../raven/scripts/install_plugins.py -s TEAL DOVE
       - run: python ../raven/scripts/install_plugins.py -s ${{ github.workspace }}
       - run: $Env:RAVEN_LIBS_NAME =  "raven_libraries_"+(Get-Location).Path.Split("\")[-4]; bash ../raven/scripts/establish_conda_env.sh --install --conda-defs $HOME/Miniconda3/etc/profile.d/conda.sh
       - run: cd ../raven; bash ./build_raven
