@@ -6,6 +6,25 @@ RAVEN_DIR=`python -c 'from src._utils import get_raven_loc; print(get_raven_loc(
 
 source $HERON_DIR/coverage_scripts/initialize_coverage.sh
 
+# read command-line arguments
+ARGS=()
+for A in "$@"
+do
+  case $A in
+    --re=*)
+      export REGEX="${A#--re=}" # Removes "--re=" and puts regex value into env variable
+      ;;
+    *)
+      ARGS+=("$A")
+      ;;
+  esac
+done
+
+if [[ "$REGEX" == "" ]] # No custom regex value
+then
+  export REGEX="HERON/tests" # Default regex value for run_tests
+fi # else it's set to a custom string, so leave it
+
 #coverage help run
 SRC_DIR=`(cd src && pwd)`
 
@@ -16,7 +35,7 @@ EXTRA="--source=${SOURCE_DIRS[@]} --omit=${OMIT_FILES[@]} --parallel-mode "
 export COVERAGE_FILE=`pwd`/.coverage
 
 coverage erase
-($RAVEN_DIR/run_tests "$@" --re=HERON/tests --python-command="coverage run $EXTRA ")
+($RAVEN_DIR/run_tests "${ARGS[@]}" --re=$REGEX --python-command="coverage run $EXTRA ")
 TESTS_SUCCESS=$?
 
 ## Prepare data and generate the html documents
