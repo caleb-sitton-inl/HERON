@@ -27,6 +27,10 @@ fi # else it's set to a custom string, so leave it
 
 #coverage help run
 SRC_DIR=`(cd src && pwd)`
+if [[ "$SRC_DIR" == "/c/"* ]] # It's a windows path
+then
+  SRC_DIR="C:${SRC_DIR:2}" # coverage.py is picky about this for --source and --omit
+fi
 
 export COVERAGE_RCFILE="$SRC_DIR/../coverage_scripts/.coveragerc"
 SOURCE_DIRS=($SRC_DIR,$SRC_DIR/../templates/)
